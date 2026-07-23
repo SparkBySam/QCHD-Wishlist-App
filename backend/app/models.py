@@ -18,6 +18,7 @@ class InventoryItem(Base):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     year: Mapped[int] = mapped_column(Integer, nullable=False)
     color: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    condition: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
     date_first_seen: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
@@ -37,6 +38,7 @@ class WishlistEntry(Base):
     desired_year_min: Mapped[int] = mapped_column(Integer, nullable=False)
     desired_year_max: Mapped[int] = mapped_column(Integer, nullable=False)
     desired_color: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    desired_condition: Mapped[str | None] = mapped_column(String(16), nullable=True)
     date_added: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="active", nullable=False)
@@ -59,6 +61,9 @@ class Match(Base):
     )
     matched_date: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
     notified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    dismissed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     wishlist_entry: Mapped["WishlistEntry"] = relationship(back_populates="matches")
     inventory_item: Mapped["InventoryItem"] = relationship(back_populates="matches")

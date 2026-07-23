@@ -32,6 +32,7 @@ def _to_mutation_out(entry: WishlistEntry, new_matches: int) -> WishlistMutation
         desired_year_min=entry.desired_year_min,
         desired_year_max=entry.desired_year_max,
         desired_color=entry.desired_color,
+        desired_condition=entry.desired_condition,
         date_added=entry.date_added,
         notes=entry.notes,
         status=entry.status,
@@ -43,11 +44,16 @@ def _to_mutation_out(entry: WishlistEntry, new_matches: int) -> WishlistMutation
 def list_wishlist(
     search: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    condition: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     query = db.query(WishlistEntry)
     if status:
         query = query.filter(WishlistEntry.status == status)
+    if condition:
+        normalized = condition.strip().lower()
+        if normalized in {"new", "used"}:
+            query = query.filter(WishlistEntry.desired_condition == normalized)
     if search:
         term = f"%{search.strip()}%"
         query = query.filter(

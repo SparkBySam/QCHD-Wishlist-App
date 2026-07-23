@@ -1,16 +1,43 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import SearchBar from "../components/SearchBar";
+import ContactWithCopy from "../components/ContactWithCopy";
+import {
+  Badge,
+  Banner,
+  Button,
+  Checkbox,
+  DetailCard,
+  DetailField,
+  SearchBar,
+  StatCard,
+} from "../ds";
+import { formatDateTime } from "../utils/dates";
 
-function formatDate(value) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString();
+function conditionTone(condition) {
+  if (condition === "new") return "condition-new";
+  if (condition === "used") return "condition-used";
+  return "condition-unknown";
+}
+
+function ConditionBadge({ condition }) {
+  const value = (condition || "unknown").toLowerCase();
+  if (value === "unknown") return null;
+  return <Badge tone={conditionTone(value)}>{value}</Badge>;
+}
+
+function bikeLabel(match) {
+  const parts = [
+    match.year,
+    match.model_name,
+    match.color ? `· ${match.color}` : null,
+  ].filter(Boolean);
+  return parts.join(" ");
 }
 
 export default function Matches() {
   const [matches, setMatches] = useState([]);
   const [search, setSearch] = useState("");
-  const [unhandledOnly, setUnhandledOnly] = useState(false);
+  const [unhandledOnly, setUnhandledOnly] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,9 +62,77 @@ export default function Matches() {
     event.stopPropagation();
     try {
       const updated = await api.setMatchNotified(match.id, !match.notified);
-      setMatches((prev) =>
-        prev.map((item) => (item.id === match.id ? updated : item))
-      );
+      setMatches((prev) => {
+        if (unhandledOnly && updated.notified) {
+          return prev.filter((item) => item.id !== match.id);
+        }
+        return prev.map((item) => (item.id === match.id ? updated : item));
+      });
+      if (unhandledOnly && updated.notified && selectedId === match.id) {
+        setSelectedId(null);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function dismissMatch(match, event) {
+    event?.stopPropagation();
+    if (
+      !window.confirm(
+        `Mark this match for ${match.customer_name} as not interested? It will be removed from the list and won’t rematch this bike.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.dismissMatch(match.id);
+      setMatches((prev) => prev.filter((item) => item.id !== match.id));
+      if (selectedId === match.id) {
+        setSelectedId(null);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function expireMatch(match, event) {
+    event?.stopPropagation();
+    if (
+      !window.confirm(
+        `Expire this handled match for ${match.customer_name}? It will be removed immediately.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.expireMatch(match.id);
+      setMatches((prev) => prev.filter((item) => item.id !== match.id));
+      if (selectedId === match.id) {
+        setSelectedId(null);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function expireAllHandled() {
+    const toExpire = matches.filter((m) => m.notified);
+    if (toExpire.length === 0) return;
+    const label = search.trim()
+      ? `${toExpire.length} handled match${toExpire.length === 1 ? "" : "es"} in this list`
+      : `all ${toExpire.length} handled match${toExpire.length === 1 ? "" : "es"}`;
+    if (!window.confirm(`Expire ${label} now? They will be removed immediately.`)) {
+      return;
+    }
+    try {
+      const ids = search.trim() ? toExpire.map((m) => m.id) : null;
+      await api.expireAllHandledMatches(ids);
+      const expiredIds = new Set(toExpire.map((m) => m.id));
+      setMatches((prev) => prev.filter((m) => !expiredIds.has(m.id)));
+      if (selected?.notified && expiredIds.has(selected.id)) {
+        setSelectedId(null);
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -48,6 +143,7 @@ export default function Matches() {
   }
 
   const pendingCount = matches.filter((m) => !m.notified).length;
+  const handledCount = matches.filter((m) => m.notified).length;
   const selected = matches.find((m) => m.id === selectedId);
 
   return (
@@ -55,7 +151,10 @@ export default function Matches() {
       <div className="panel-header">
         <div>
           <h2>Matches</h2>
-          <p className="muted">Wishlist hits from inventory scrapes and new entries</p>
+          <p className="muted">
+            Wishlist hits from inventory scrapes and new entries · Handled matches
+            are removed after 7 days
+          </p>
         </div>
         <div className="toolbar">
           <SearchBar
@@ -63,97 +162,78 @@ export default function Matches() {
             onChange={setSearch}
             placeholder="Search customer, stock, model…"
           />
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={unhandledOnly}
-              onChange={(e) => setUnhandledOnly(e.target.checked)}
-            />
-            Unhandled only
-          </label>
-          <button className="btn" onClick={exportCsv}>
-            Export CSV
-          </button>
-          <button className="btn" onClick={loadMatches} disabled={loading}>
+          <Checkbox
+            label="Unhandled only"
+            checked={unhandledOnly}
+            onChange={setUnhandledOnly}
+          />
+          <Button onClick={exportCsv}>Export CSV</Button>
+          {!unhandledOnly && handledCount > 0 && (
+            <Button variant="danger" onClick={expireAllHandled}>
+              Expire all handled
+            </Button>
+          )}
+          <Button onClick={loadMatches} disabled={loading}>
             Refresh
-          </button>
+          </Button>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <Banner tone="error">{error}</Banner>}
 
       <div className="stats">
-        <div className="stat">
-          <div className="label">Total matches</div>
-          <div className="value">{matches.length}</div>
-        </div>
-        <div className="stat">
-          <div className="label">Needs attention</div>
-          <div className="value">{pendingCount}</div>
-        </div>
+        <StatCard label="Total matches" value={matches.length} />
+        <StatCard
+          label="Needs attention"
+          value={pendingCount}
+          accent={pendingCount > 0}
+        />
       </div>
 
       {selected && (
-        <div className="detail-card">
-          <div className="detail-card-header">
-            <h3>Match details</h3>
-            <button className="btn btn-ghost" onClick={() => setSelectedId(null)}>
-              Close
-            </button>
-          </div>
-          <div className="detail-grid">
-            <div>
-              <div className="detail-label">Customer</div>
-              <div>{selected.customer_name}</div>
+        <DetailCard title="Match details" onClose={() => setSelectedId(null)}>
+          <DetailField label="Customer">{selected.customer_name}</DetailField>
+          <DetailField label="Contact">
+            <ContactWithCopy contact={selected.phone_or_email} />
+          </DetailField>
+          <DetailField label="Wanted">{selected.desired_model}</DetailField>
+          <DetailField label="Bike found">
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              {bikeLabel(selected)}
+              <ConditionBadge condition={selected.condition} />
+            </span>
+          </DetailField>
+          <DetailField label="Stock #">{selected.stock_number}</DetailField>
+          <DetailField label="Matched">{formatDateTime(selected.matched_date)}</DetailField>
+          {selected.customer_notes && (
+            <DetailField label="Customer notes" full>
+              {selected.customer_notes}
+            </DetailField>
+          )}
+          <DetailField label="Actions" full>
+            <div className="actions">
+              {!selected.notified && (
+                <Button variant="ghost" onClick={() => dismissMatch(selected)}>
+                  Not interested
+                </Button>
+              )}
+              {selected.notified && (
+                <Button variant="danger" onClick={() => expireMatch(selected)}>
+                  Expire now
+                </Button>
+              )}
             </div>
-            <div>
-              <div className="detail-label">Contact</div>
-              <div>
-                {selected.phone_or_email?.includes("@") ? (
-                  <a href={`mailto:${selected.phone_or_email}`}>
-                    {selected.phone_or_email}
-                  </a>
-                ) : (
-                  <a href={`tel:${selected.phone_or_email.replace(/\D/g, "")}`}>
-                    {selected.phone_or_email}
-                  </a>
-                )}
-              </div>
-            </div>
-            <div>
-              <div className="detail-label">Wanted</div>
-              <div>{selected.desired_model}</div>
-            </div>
-            <div>
-              <div className="detail-label">Bike found</div>
-              <div>
-                {selected.year} {selected.model_name}
-                {selected.color ? ` · ${selected.color}` : ""}
-              </div>
-            </div>
-            <div>
-              <div className="detail-label">Stock #</div>
-              <div>{selected.stock_number}</div>
-            </div>
-            <div>
-              <div className="detail-label">Matched</div>
-              <div>{formatDate(selected.matched_date)}</div>
-            </div>
-            {selected.customer_notes && (
-              <div className="detail-full">
-                <div className="detail-label">Customer notes</div>
-                <div>{selected.customer_notes}</div>
-              </div>
-            )}
-          </div>
-        </div>
+          </DetailField>
+        </DetailCard>
       )}
 
       {loading ? (
         <div className="empty">Loading matches…</div>
       ) : matches.length === 0 ? (
         <div className="empty">
-          No matches yet. Add wishlist entries or run a scrape.
+          {unhandledOnly
+            ? "No unhandled matches. Uncheck “Unhandled only” to see handled history (kept for 7 days)."
+            : "No matches yet. Add wishlist entries or run a scrape."}
         </div>
       ) : (
         <div className="table-wrap">
@@ -176,35 +256,54 @@ export default function Matches() {
                   className={selectedId === match.id ? "row-selected" : "row-clickable"}
                   onClick={() => setSelectedId(match.id)}
                 >
-                  <td>{formatDate(match.matched_date)}</td>
+                  <td>{formatDateTime(match.matched_date)}</td>
                   <td>
                     <strong>{match.customer_name}</strong>
-                    <div className="muted" style={{ fontSize: "0.85rem" }}>
-                      {match.phone_or_email}
+                    <div className="muted contact-cell">
+                      <ContactWithCopy contact={match.phone_or_email} stopRowClick />
                     </div>
                   </td>
                   <td>{match.desired_model}</td>
                   <td>
-                    {match.year} {match.model_name}
-                    {match.color ? ` · ${match.color}` : ""}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                      <span>
+                        {match.year} {match.model_name}
+                        {match.color ? ` · ${match.color}` : ""}
+                      </span>
+                      <ConditionBadge condition={match.condition} />
+                    </div>
                   </td>
                   <td>{match.stock_number}</td>
                   <td>
-                    <span
-                      className={`badge ${match.notified ? "badge-done" : "badge-new"}`}
-                    >
+                    <Badge tone={match.notified ? "done" : "new"}>
                       {match.notified ? "Handled" : "New"}
-                    </span>
+                    </Badge>
                   </td>
                   <td>
-                    <button
-                      className={
-                        match.notified ? "btn btn-ghost" : "btn btn-success"
-                      }
-                      onClick={(e) => toggleNotified(match, e)}
-                    >
-                      {match.notified ? "Mark unhandled" : "Mark notified"}
-                    </button>
+                    <div className="actions">
+                      <Button
+                        variant={match.notified ? "ghost" : "success"}
+                        onClick={(e) => toggleNotified(match, e)}
+                      >
+                        {match.notified ? "Mark unhandled" : "Mark notified"}
+                      </Button>
+                      {!match.notified && (
+                        <Button
+                          variant="ghost"
+                          onClick={(e) => dismissMatch(match, e)}
+                        >
+                          Not interested
+                        </Button>
+                      )}
+                      {match.notified && (
+                        <Button
+                          variant="danger"
+                          onClick={(e) => expireMatch(match, e)}
+                        >
+                          Expire
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

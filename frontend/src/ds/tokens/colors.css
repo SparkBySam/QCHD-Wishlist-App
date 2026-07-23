@@ -1,0 +1,65 @@
+/* QCHD Wishlist Tracker — color tokens
+   Direction: dark, warm-charcoal UI with a single confident Harley-adjacent
+   orange accent. Calm, not flashy — accent is used sparingly (primary actions,
+   active nav, key numbers), never as a background wash. */
+
+:root {
+  /* ---- base neutrals (warm charcoal, not blue-black) ---- */
+  --n-950: #101315;
+  --n-900: #14171a;
+  --n-850: #1c2024;
+  --n-800: #21262b;
+  --n-700: #262b30;
+  --n-600: #33393f;
+  --n-500: #565d64;
+  --n-400: #6b7278;
+  --n-300: #9aa1a8;
+  --n-200: #c7ccd1;
+  --n-100: #e9e6e1;
+  --n-50: #f6f3ef;
+
+  /* ---- brand orange (Harley-adjacent, not the trademarked H-D orange/bar-and-shield) ---- */
+  --orange-700: #b8440c;
+  --orange-600: #d94f0f;
+  --orange-500: #ff7a1a;
+  --orange-400: #ff9a4d;
+  --orange-300: #ffb87a;
+
+  /* ---- semantic surfaces ---- */
+  --bg: var(--n-900);
+  --surface: var(--n-850);
+  --surface-2: var(--n-700);
+  --surface-raised: var(--n-800);
+  --border: var(--n-600);
+  --border-strong: var(--n-500);
+
+  /* ---- semantic text ---- */
+  --text: var(--n-50);
+  --text-muted: var(--n-300);
+  --text-faint: var(--n-400);
+
+  /* ---- accent ---- */
+  --accent: var(--orange-500);
+  --accent-hover: var(--orange-600);
+  --accent-active: var(--orange-700);
+  --accent-ink: #1a0f08;
+  --accent-soft-bg: rgba(255, 122, 26, 0.14);
+  --accent-soft-border: rgba(255, 122, 26, 0.35);
+
+  /* ---- status colors (kept distinct from accent so orange stays meaningful) ---- */
+  --success: #3fbf6a;
+  --success-soft-bg: rgba(63, 191, 106, 0.14);
+  --success-soft-border: rgba(63, 191, 106, 0.32);
+
+  --warning: #f2b134;
+  --warning-soft-bg: rgba(242, 177, 52, 0.14);
+  --warning-soft-border: rgba(242, 177, 52, 0.32);
+
+  --danger: #ef5350;
+  --danger-soft-bg: rgba(239, 83, 80, 0.14);
+  --danger-soft-border: rgba(239, 83, 80, 0.32);
+
+  --info: #5aa9e6;
+  --info-soft-bg: rgba(90, 169, 230, 0.14);
+  --info-soft-border: rgba(90, 169, 230, 0.32);
+}

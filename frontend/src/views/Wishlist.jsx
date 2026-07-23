@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import SearchBar from "../components/SearchBar";
+import ContactWithCopy from "../components/ContactWithCopy";
+import {
+  Badge,
+  Banner,
+  Button,
+  Field,
+  SearchBar,
+} from "../ds";
+import { formatDate } from "../utils/dates";
 
 const emptyForm = {
   customer_name: "",
@@ -9,13 +17,15 @@ const emptyForm = {
   desired_year_min: new Date().getFullYear() - 5,
   desired_year_max: new Date().getFullYear() + 1,
   desired_color: "",
+  desired_condition: "",
   notes: "",
   status: "active",
 };
 
-function formatDate(value) {
-  if (!value) return "—";
-  return new Date(value).toLocaleDateString();
+function conditionTone(condition) {
+  if (condition === "new") return "condition-new";
+  if (condition === "used") return "condition-used";
+  return "condition-unknown";
 }
 
 export default function Wishlist() {
@@ -24,6 +34,7 @@ export default function Wishlist() {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [conditionFilter, setConditionFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -32,14 +43,14 @@ export default function Wishlist() {
   const loadEntries = useCallback(async () => {
     setError("");
     try {
-      const data = await api.getWishlist(search, statusFilter);
+      const data = await api.getWishlist(search, statusFilter, conditionFilter);
       setEntries(data);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [search, statusFilter, conditionFilter]);
 
   useEffect(() => {
     loadEntries();
@@ -58,6 +69,7 @@ export default function Wishlist() {
       desired_year_min: entry.desired_year_min,
       desired_year_max: entry.desired_year_max,
       desired_color: entry.desired_color || "",
+      desired_condition: entry.desired_condition || "",
       notes: entry.notes || "",
       status: entry.status,
     });
@@ -79,6 +91,7 @@ export default function Wishlist() {
       desired_year_min: Number(form.desired_year_min),
       desired_year_max: Number(form.desired_year_max),
       desired_color: form.desired_color.trim() || null,
+      desired_condition: form.desired_condition || null,
       notes: form.notes.trim() || null,
     };
 
@@ -141,73 +154,87 @@ export default function Wishlist() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by status"
           >
             <option value="">All statuses</option>
             <option value="active">active</option>
             <option value="fulfilled">fulfilled</option>
             <option value="cancelled">cancelled</option>
           </select>
+          <select
+            value={conditionFilter}
+            onChange={(e) => setConditionFilter(e.target.value)}
+            aria-label="Filter by condition"
+          >
+            <option value="">All conditions</option>
+            <option value="new">New</option>
+            <option value="used">Used</option>
+          </select>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
-      {successMessage && <div className="success-banner">{successMessage}</div>}
+      {error && <Banner tone="error">{error}</Banner>}
+      {successMessage && <Banner tone="success">{successMessage}</Banner>}
 
       <form onSubmit={handleSubmit}>
         <div className="form-grid">
-          <label>
-            Customer name
+          <Field label="Customer name">
             <input
               required
               value={form.customer_name}
               onChange={(e) => updateField("customer_name", e.target.value)}
             />
-          </label>
-          <label>
-            Phone or email
+          </Field>
+          <Field label="Phone or email">
             <input
               required
               value={form.phone_or_email}
               onChange={(e) => updateField("phone_or_email", e.target.value)}
             />
-          </label>
-          <label>
-            Desired model
-            <input
+          </Field>
+          <Field label="Desired model(s)" full>
+            <textarea
               required
-              placeholder="e.g. Fat Boy, FLFB, Street Glide"
+              rows={2}
+              placeholder="One per line or comma-separated, e.g. Fat Boy, Street Glide, FLHX"
               value={form.desired_model}
               onChange={(e) => updateField("desired_model", e.target.value)}
             />
-          </label>
-          <label>
-            Year min
+          </Field>
+          <Field label="Year min">
             <input
               required
               type="number"
               value={form.desired_year_min}
               onChange={(e) => updateField("desired_year_min", e.target.value)}
             />
-          </label>
-          <label>
-            Year max
+          </Field>
+          <Field label="Year max">
             <input
               required
               type="number"
               value={form.desired_year_max}
               onChange={(e) => updateField("desired_year_max", e.target.value)}
             />
-          </label>
-          <label>
-            Desired color (optional)
+          </Field>
+          <Field label="Desired color (optional)">
             <input
               placeholder="Leave blank for any"
               value={form.desired_color}
               onChange={(e) => updateField("desired_color", e.target.value)}
             />
-          </label>
-          <label>
-            Status
+          </Field>
+          <Field label="New / Used">
+            <select
+              value={form.desired_condition}
+              onChange={(e) => updateField("desired_condition", e.target.value)}
+            >
+              <option value="">Any</option>
+              <option value="new">New</option>
+              <option value="used">Used</option>
+            </select>
+          </Field>
+          <Field label="Status">
             <select
               value={form.status}
               onChange={(e) => updateField("status", e.target.value)}
@@ -216,28 +243,27 @@ export default function Wishlist() {
               <option value="fulfilled">fulfilled</option>
               <option value="cancelled">cancelled</option>
             </select>
-          </label>
-          <label className="full">
-            Notes
+          </Field>
+          <Field label="Notes" full>
             <textarea
               rows={2}
               value={form.notes}
               onChange={(e) => updateField("notes", e.target.value)}
             />
-          </label>
+          </Field>
         </div>
         <div className="toolbar">
-          <button className="btn btn-primary" type="submit" disabled={saving}>
+          <Button variant="primary" type="submit" disabled={saving}>
             {saving
               ? "Saving…"
               : editingId
                 ? "Update Entry"
                 : "Add Wishlist Entry"}
-          </button>
+          </Button>
           {editingId && (
-            <button className="btn" type="button" onClick={resetForm}>
+            <Button type="button" onClick={resetForm}>
               Cancel edit
-            </button>
+            </Button>
           )}
         </div>
       </form>
@@ -245,9 +271,9 @@ export default function Wishlist() {
       {loading ? (
         <div className="empty">Loading wishlist…</div>
       ) : entries.length === 0 ? (
-        <div className="empty">No wishlist entries{search ? " matching your search" : ""}.</div>
+        <div className="empty">No wishlist entries{search || conditionFilter || statusFilter ? " matching your filters" : ""}.</div>
       ) : (
-        <div className="table-wrap" style={{ marginTop: "1.25rem" }}>
+        <div className="table-wrap table-spaced">
           <table>
             <thead>
               <tr>
@@ -256,6 +282,7 @@ export default function Wishlist() {
                 <th>Looking for</th>
                 <th>Years</th>
                 <th>Color</th>
+                <th>Condition</th>
                 <th>Status</th>
                 <th>Added</th>
                 <th>Actions</th>
@@ -267,45 +294,45 @@ export default function Wishlist() {
                   <td>
                     <strong>{entry.customer_name}</strong>
                     {entry.notes && (
-                      <div className="muted" style={{ fontSize: "0.85rem" }}>
+                      <div className="muted" style={{ fontSize: "var(--text-sm)" }}>
                         {entry.notes}
                       </div>
                     )}
                   </td>
-                  <td>{entry.phone_or_email}</td>
+                  <td>
+                    <ContactWithCopy contact={entry.phone_or_email} />
+                  </td>
                   <td>{entry.desired_model}</td>
                   <td>
                     {entry.desired_year_min}–{entry.desired_year_max}
                   </td>
                   <td>{entry.desired_color || "Any"}</td>
                   <td>
-                    <span className={`badge badge-${entry.status}`}>
-                      {entry.status}
-                    </span>
+                    {entry.desired_condition ? (
+                      <Badge tone={conditionTone(entry.desired_condition)}>
+                        {entry.desired_condition}
+                      </Badge>
+                    ) : (
+                      "Any"
+                    )}
+                  </td>
+                  <td>
+                    <Badge tone={entry.status}>{entry.status}</Badge>
                   </td>
                   <td>{formatDate(entry.date_added)}</td>
                   <td>
                     <div className="actions">
-                      <button
-                        className="btn btn-ghost"
-                        onClick={() => startEdit(entry)}
-                      >
+                      <Button variant="ghost" onClick={() => startEdit(entry)}>
                         Edit
-                      </button>
+                      </Button>
                       {entry.status === "active" && (
-                        <button
-                          className="btn btn-success"
-                          onClick={() => handleFulfill(entry.id)}
-                        >
+                        <Button variant="success" onClick={() => handleFulfill(entry.id)}>
                           Fulfill
-                        </button>
+                        </Button>
                       )}
-                      <button
-                        className="btn btn-danger"
-                        onClick={() => handleDelete(entry.id)}
-                      >
+                      <Button variant="danger" onClick={() => handleDelete(entry.id)}>
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

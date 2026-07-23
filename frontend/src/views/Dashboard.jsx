@@ -1,10 +1,74 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
-import SearchBar from "../components/SearchBar";
+import {
+  Badge,
+  Banner,
+  Button,
+  SearchBar,
+  Spinner,
+  StatCard,
+} from "../ds";
+import { formatDateTime, parseApiDate } from "../utils/dates";
 
-function formatDate(value) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString();
+const COLUMNS = [
+  { key: "stock_number", label: "Stock #" },
+  { key: "model_name", label: "Model" },
+  { key: "year", label: "Year" },
+  { key: "condition", label: "Condition" },
+  { key: "color", label: "Color" },
+  { key: "date_first_seen", label: "First Seen" },
+];
+
+function formatNextScrape(dueAt) {
+  const due = parseApiDate(dueAt);
+  if (!due) return null;
+  if (due.getTime() <= Date.now()) return "due now";
+  return formatDateTime(dueAt);
+}
+
+function conditionTone(condition) {
+  if (condition === "new") return "condition-new";
+  if (condition === "used") return "condition-used";
+  return "condition-unknown";
+}
+
+function ConditionBadge({ condition }) {
+  const value = (condition || "unknown").toLowerCase();
+  const label = value === "unknown" ? "—" : value;
+  return <Badge tone={conditionTone(value)}>{label}</Badge>;
+}
+
+function compareValues(a, b, key) {
+  const left = a[key] ?? "";
+  const right = b[key] ?? "";
+
+  if (key === "year") {
+    return Number(left) - Number(right);
+  }
+  if (key === "date_first_seen") {
+    return (parseApiDate(left)?.getTime() || 0) - (parseApiDate(right)?.getTime() || 0);
+  }
+  return String(left).localeCompare(String(right), undefined, { sensitivity: "base" });
+}
+
+function SortableHeader({ column, sortKey, sortDir, onSort }) {
+  const active = sortKey === column.key;
+  const indicator = active ? (sortDir === "asc" ? " ↑" : " ↓") : "";
+
+  return (
+    <th>
+      <button
+        type="button"
+        className={`sort-header${active ? " active" : ""}`}
+        onClick={() => onSort(column.key)}
+      >
+        {column.label}
+        <span className="sort-indicator" aria-hidden="true">
+          {indicator || " ↕"}
+        </span>
+      </button>
+    </th>
+  );
 }
 
 export default function Dashboard() {
@@ -13,17 +77,38 @@ export default function Dashboard() {
   const [scrapeStatus, setScrapeStatus] = useState(null);
   const [alertsConfig, setAlertsConfig] = useState(null);
   const [search, setSearch] = useState("");
+  const [conditionFilter, setConditionFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [scraping, setScraping] = useState(false);
   const [error, setError] = useState("");
   const [scrapeMessage, setScrapeMessage] = useState("");
+  const [sortKey, setSortKey] = useState("date_first_seen");
+  const [sortDir, setSortDir] = useState("desc");
   const pollRef = useRef(null);
+
+  const sortedInventory = useMemo(() => {
+    const rows = [...inventory];
+    rows.sort((a, b) => {
+      const result = compareValues(a, b, sortKey);
+      return sortDir === "asc" ? result : -result;
+    });
+    return rows;
+  }, [inventory, sortKey, sortDir]);
+
+  function handleSort(key) {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "date_first_seen" || key === "year" ? "desc" : "asc");
+    }
+  }
 
   const loadData = useCallback(async () => {
     setError("");
     try {
       const [items, notes, status, alerts] = await Promise.all([
-        api.getInventory(true, search),
+        api.getInventory(true, search, conditionFilter),
         api.getNotifications(true),
         api.getScrapeStatus(),
         api.getAlertsConfig(),
@@ -44,7 +129,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, conditionFilter]);
 
   useEffect(() => {
     loadData();
@@ -107,6 +192,15 @@ export default function Dashboard() {
     }
   }
 
+  async function clearAllNotifications() {
+    try {
+      await api.clearAllNotifications();
+      setNotifications([]);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div className="panel">
       <div className="panel-header">
@@ -115,8 +209,15 @@ export default function Dashboard() {
           <p className="muted">
             Active bikes on the lot
             {scrapeStatus?.last_scrape_at && (
-              <> · Last scraped {formatDate(scrapeStatus.last_scrape_at)}</>
+              <> · Last scraped {formatDateTime(scrapeStatus.last_scrape_at)}</>
             )}
+            {scrapeStatus?.next_scrape_due_at &&
+              scrapeStatus.scrape_status !== "running" && (
+                <>
+                  {" "}
+                  · Next auto scrape {formatNextScrape(scrapeStatus.next_scrape_due_at)}
+                </>
+              )}
           </p>
         </div>
         <div className="toolbar">
@@ -125,54 +226,61 @@ export default function Dashboard() {
             onChange={setSearch}
             placeholder="Search stock, model, color…"
           />
-          <button className="btn" onClick={loadData} disabled={loading || scraping}>
-            Refresh
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleScrape}
-            disabled={scraping}
+          <select
+            value={conditionFilter}
+            onChange={(e) => setConditionFilter(e.target.value)}
+            aria-label="Filter by condition"
           >
+            <option value="">All conditions</option>
+            <option value="new">New</option>
+            <option value="used">Used</option>
+          </select>
+          <Button onClick={loadData} disabled={loading || scraping}>
+            Refresh
+          </Button>
+          <Button variant="primary" onClick={handleScrape} disabled={scraping}>
             {scraping ? "Scraping…" : "Scrape Now"}
-          </button>
+          </Button>
         </div>
       </div>
 
       {scraping && (
-        <div className="info-banner">
-          <div className="spinner" aria-hidden="true" />
+        <Banner tone="info">
+          <Spinner />
           Scrape in progress — this usually takes 2–5 minutes. You can keep using
           the app; results will refresh when done.
-        </div>
+        </Banner>
       )}
 
-      {error && <div className="error">{error}</div>}
+      {error && <Banner tone="error">{error}</Banner>}
       {scrapeMessage && !scraping && (
-        <div className="success-banner">{scrapeMessage}</div>
+        <Banner tone="success">{scrapeMessage}</Banner>
       )}
 
       {alertsConfig && (alertsConfig.email || alertsConfig.sms) && (
-        <div className="info-banner subtle">
+        <Banner tone="subtle">
           External alerts enabled:
           {alertsConfig.email && " email"}
           {alertsConfig.email && alertsConfig.sms && " +"}
           {alertsConfig.sms && " SMS"}
-        </div>
+        </Banner>
       )}
 
       {notifications.length > 0 && (
         <div className="notifications">
-          <h3>New match notifications</h3>
+          <div className="notifications-header">
+            <h3>New match notifications ({notifications.length})</h3>
+            <Button variant="ghost" onClick={clearAllNotifications}>
+              Clear all
+            </Button>
+          </div>
           <ul>
             {notifications.map((note) => (
               <li key={note.id}>
-                {note.message}{" "}
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => dismissNotification(note.id)}
-                >
-                  Dismiss
-                </button>
+                <span className="notification-text">{note.message}</span>
+                <Button variant="ghost" onClick={() => dismissNotification(note.id)}>
+                  Clear
+                </Button>
               </li>
             ))}
           </ul>
@@ -180,14 +288,20 @@ export default function Dashboard() {
       )}
 
       <div className="stats">
-        <div className="stat">
-          <div className="label">Active inventory</div>
-          <div className="value">{inventory.length}</div>
-        </div>
-        <div className="stat">
-          <div className="label">Unread notifications</div>
-          <div className="value">{notifications.length}</div>
-        </div>
+        <StatCard label="Active inventory" value={inventory.length} />
+        <StatCard
+          label="New"
+          value={inventory.filter((item) => item.condition === "new").length}
+        />
+        <StatCard
+          label="Used"
+          value={inventory.filter((item) => item.condition === "used").length}
+        />
+        <StatCard
+          label="Unread notifications"
+          value={notifications.length}
+          accent={notifications.length > 0}
+        />
       </div>
 
       {loading ? (
@@ -206,21 +320,28 @@ export default function Dashboard() {
           <table>
             <thead>
               <tr>
-                <th>Stock #</th>
-                <th>Model</th>
-                <th>Year</th>
-                <th>Color</th>
-                <th>First Seen</th>
+                {COLUMNS.map((column) => (
+                  <SortableHeader
+                    key={column.key}
+                    column={column}
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={handleSort}
+                  />
+                ))}
               </tr>
             </thead>
             <tbody>
-              {inventory.map((item) => (
+              {sortedInventory.map((item) => (
                 <tr key={item.id}>
                   <td>{item.stock_number}</td>
                   <td>{item.model_name}</td>
                   <td>{item.year}</td>
+                  <td>
+                    <ConditionBadge condition={item.condition} />
+                  </td>
                   <td>{item.color || "—"}</td>
-                  <td>{formatDate(item.date_first_seen)}</td>
+                  <td>{formatDateTime(item.date_first_seen)}</td>
                 </tr>
               ))}
             </tbody>

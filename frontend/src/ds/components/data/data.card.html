@@ -1,0 +1,46 @@
+<!-- @dsCard group="Components" viewport="700x320" name="Data" subtitle="DataTable — sortable inventory grid" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{padding:20px; background:var(--bg);}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { DataTable } = window.QCHDWishlistTrackerDesignSystem_1b3257;
+const rows = [
+  { id: 1, stock_number: "H4021", model_name: "Fat Boy 114", year: 2025, color: "Vivid Black" },
+  { id: 2, stock_number: "H4055", model_name: "Street Glide", year: 2024, color: "Billiard Gray" },
+  { id: 3, stock_number: "H4102", model_name: "Road Glide", year: 2026, color: "—" },
+];
+function Demo() {
+  const [sortKey, setSortKey] = React.useState("stock_number");
+  const [sortDir, setSortDir] = React.useState("asc");
+  function onSort(key) {
+    if (key === sortKey) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  }
+  return (
+    <DataTable
+      columns={[
+        { key: "stock_number", label: "Stock #", sortable: true },
+        { key: "model_name", label: "Model", sortable: true },
+        { key: "year", label: "Year", sortable: true },
+        { key: "color", label: "Color", sortable: true },
+      ]}
+      rows={rows}
+      sortKey={sortKey}
+      sortDir={sortDir}
+      onSort={onSort}
+    />
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+</script>
+</body>
+</html>

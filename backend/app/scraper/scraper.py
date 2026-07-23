@@ -42,6 +42,16 @@ class ScrapedBike:
     model_name: str
     year: int
     color: str = ""
+    condition: str = "unknown"
+
+
+def _normalize_condition(raw: str | None) -> str:
+    value = re.sub(r"[\s_-]+", " ", (raw or "").strip().lower())
+    if value == "new":
+        return "new"
+    if value == "used" or "pre owned" in value or "preowned" in value:
+        return "used"
+    return "unknown"
 
 
 def _listings_signature(soup: BeautifulSoup) -> str:
@@ -100,11 +110,14 @@ def _parse_listing(listing) -> ScrapedBike | None:
     if not model_name:
         model_name = "Unknown"
 
+    condition = _normalize_condition(listing.get("data-unit-condition"))
+
     return ScrapedBike(
         stock_number=stock_number,
         model_name=model_name,
         year=year,
         color=color,
+        condition=condition,
     )
 
 

@@ -1,0 +1,219 @@
+/* App shell — layout on top of design-system tokens */
+
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: var(--space-7);
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-7);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--weight-bold);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.brand h1 {
+  font-size: var(--text-xl);
+}
+
+.brand p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Sortable table headers */
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sort-header:hover,
+.sort-header.active {
+  color: var(--text);
+}
+
+.sort-indicator {
+  font-size: var(--text-xs);
+  opacity: 0.55;
+}
+
+.sort-header.active .sort-indicator {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.contact-with-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.contact-with-copy a {
+  white-space: nowrap;
+}
+
+.contact-cell {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.copy-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  line-height: 0;
+  opacity: 0.65;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+}
+
+@media (max-width: 520px) {
+  .contact-with-copy {
+    flex-wrap: wrap;
+  }
+}
+
+.contact-with-copy:hover .copy-icon-btn,
+.copy-icon-btn:hover,
+.copy-icon-btn:focus-visible {
+  opacity: 1;
+}
+
+.copy-icon-btn:hover {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.copy-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.copy-icon-btn.copied {
+  color: var(--success);
+  opacity: 1;
+}
+
+/* Row action button groups */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Notification panel overrides */
+.notifications {
+  margin-bottom: var(--space-6);
+}
+
+.notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-3);
+}
+
+.notifications-header h3 {
+  margin: 0;
+}
+
+.notifications ul {
+  padding-left: 0;
+  list-style: none;
+}
+
+.notifications li {
+  align-items: flex-start;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--warning-soft-border);
+}
+
+.notifications li:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.notification-text {
+  flex: 1;
+}
+
+/* Spacing helpers */
+.banner + .banner,
+.banner + .stats,
+.stats + .table-wrap {
+  margin-top: var(--space-6);
+}
+
+.form-grid {
+  margin-bottom: var(--space-6);
+}
+
+.table-spaced {
+  margin-top: var(--space-7);
+}
+
+@media (max-width: 700px) {
+  .app {
+    padding: var(--space-5);
+  }
+
+  .app-header {
+    align-items: flex-start;
+  }
+
+  .nav {
+    width: 100%;
+    overflow-x: auto;
+  }
+}

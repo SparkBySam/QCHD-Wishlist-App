@@ -1,0 +1,52 @@
+/* QCHD Wishlist Tracker — base element resets shared across surfaces */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--orange-400);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--orange-300);
+  text-decoration: underline;
+}
+
+::selection {
+  background: var(--accent-soft-bg);
+  color: var(--text);
+}

@@ -32,6 +32,7 @@ def sync_inventory(db: Session) -> dict:
                 model_name=bike.model_name,
                 year=bike.year,
                 color=bike.color or "",
+                condition=bike.condition or "unknown",
                 is_active=True,
             )
             db.add(item)
@@ -44,6 +45,7 @@ def sync_inventory(db: Session) -> dict:
             item.model_name = bike.model_name
             item.year = bike.year
             item.color = bike.color or ""
+            item.condition = bike.condition or "unknown"
             item.is_active = True
             if was_inactive:
                 reactivated_items += 1

@@ -1,7 +1,19 @@
-from datetime import datetime
-from typing import Literal
+from datetime import datetime, timezone
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+
+
+def _serialize_utc(value: datetime) -> str:
+    """Emit UTC ISO-8601 with Z so browsers don't treat naive stamps as local."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    else:
+        value = value.astimezone(timezone.utc)
+    return value.isoformat().replace("+00:00", "Z")
+
+
+UtcDateTime = Annotated[datetime, PlainSerializer(_serialize_utc, return_type=str)]
 
 
 class InventoryItemOut(BaseModel):
@@ -12,7 +24,8 @@ class InventoryItemOut(BaseModel):
     model_name: str
     year: int
     color: str
-    date_first_seen: datetime
+    condition: str = "unknown"
+    date_first_seen: UtcDateTime
     is_active: bool
 
 
@@ -23,6 +36,7 @@ class WishlistEntryCreate(BaseModel):
     desired_year_min: int
     desired_year_max: int
     desired_color: str | None = None
+    desired_condition: Literal["new", "used"] | None = None
     notes: str | None = None
     status: Literal["active", "fulfilled", "cancelled"] = "active"
 
@@ -34,6 +48,7 @@ class WishlistEntryUpdate(BaseModel):
     desired_year_min: int | None = None
     desired_year_max: int | None = None
     desired_color: str | None = None
+    desired_condition: Literal["new", "used"] | None = None
     notes: str | None = None
     status: Literal["active", "fulfilled", "cancelled"] | None = None
 
@@ -48,7 +63,8 @@ class WishlistEntryOut(BaseModel):
     desired_year_min: int
     desired_year_max: int
     desired_color: str | None
-    date_added: datetime
+    desired_condition: str | None = None
+    date_added: UtcDateTime
     notes: str | None
     status: str
 
@@ -63,8 +79,9 @@ class MatchOut(BaseModel):
     id: int
     wishlist_entry_id: int
     inventory_item_id: int
-    matched_date: datetime
+    matched_date: UtcDateTime
     notified: bool
+    dismissed: bool = False
     customer_name: str | None = None
     phone_or_email: str | None = None
     desired_model: str | None = None
@@ -73,10 +90,15 @@ class MatchOut(BaseModel):
     model_name: str | None = None
     year: int | None = None
     color: str | None = None
+    condition: str | None = None
 
 
 class MatchNotifyUpdate(BaseModel):
     notified: bool
+
+
+class MatchExpireHandledRequest(BaseModel):
+    ids: list[int] | None = None
 
 
 class NotificationOut(BaseModel):
@@ -85,8 +107,12 @@ class NotificationOut(BaseModel):
     id: int
     match_id: int
     message: str
-    created_at: datetime
+    created_at: UtcDateTime
     is_read: bool
+
+
+class NotificationsClearedOut(BaseModel):
+    cleared: int
 
 
 class ScrapeResult(BaseModel):
@@ -101,8 +127,10 @@ class ScrapeResult(BaseModel):
 class ScrapeStatusOut(BaseModel):
     scrape_status: str
     scrape_message: str | None = None
-    last_scrape_at: datetime | None = None
-    scrape_started_at: datetime | None = None
+    last_scrape_at: UtcDateTime | None = None
+    scrape_started_at: UtcDateTime | None = None
+    next_scrape_due_at: UtcDateTime | None = None
+    scrape_interval_hours: float = 6
 
 
 class ScrapeTriggerOut(BaseModel):

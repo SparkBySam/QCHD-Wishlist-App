@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
 from app.models import InventoryItem, Match, WishlistEntry
-from app.services.alert_service import dispatch_match_alerts
-from app.services.model_utils import model_matches
+from app.services.alert_service import dispatch_batch_match_alerts
+from app.services.model_utils import model_matches_any
 from app.services.notification_service import build_match_message, create_match_notification
 
 
@@ -12,16 +12,28 @@ def color_matches(desired_color: str | None, inventory_color: str) -> bool:
     return desired_color.strip().lower() in (inventory_color or "").strip().lower()
 
 
+def condition_matches(desired_condition: str | None, inventory_condition: str) -> bool:
+    if not desired_condition or not desired_condition.strip():
+        return True
+    wanted = desired_condition.strip().lower()
+    if wanted not in {"new", "used"}:
+        return True
+    return (inventory_condition or "").strip().lower() == wanted
+
+
 def year_in_range(year: int, year_min: int, year_max: int) -> bool:
     return year_min <= year <= year_max
 
 
-def is_match(entry: WishlistEntry, item: InventoryItem) -> bool:
-    return (
-        model_matches(entry.desired_model, item.model_name)
-        and year_in_range(item.year, entry.desired_year_min, entry.desired_year_max)
-        and color_matches(entry.desired_color, item.color)
-    )
+def find_match(entry: WishlistEntry, item: InventoryItem) -> str | None:
+    """Return the wishlist model that matched, or None."""
+    if not year_in_range(item.year, entry.desired_year_min, entry.desired_year_max):
+        return None
+    if not color_matches(entry.desired_color, item.color):
+        return None
+    if not condition_matches(entry.desired_condition, item.condition):
+        return None
+    return model_matches_any(entry.desired_model, item.model_name)
 
 
 def run_matching(
@@ -69,7 +81,9 @@ def run_matching(
             pair = (entry.id, item.id)
             if pair in existing_pairs:
                 continue
-            if not is_match(entry, item):
+
+            matched_model = find_match(entry, item)
+            if matched_model is None:
                 continue
 
             match = Match(
@@ -79,14 +93,15 @@ def run_matching(
             )
             db.add(match)
             db.flush()
-            create_match_notification(db, match, entry, item)
-            alert_messages.append(build_match_message(entry, item))
+            message = build_match_message(entry, item, matched_model)
+            create_match_notification(db, match, entry, item, message)
+            alert_messages.append(message)
             existing_pairs.add(pair)
             new_matches += 1
 
     db.commit()
 
-    for message in alert_messages:
-        dispatch_match_alerts(message)
+    if alert_messages:
+        dispatch_batch_match_alerts(alert_messages)
 
     return new_matches

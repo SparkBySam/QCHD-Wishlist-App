@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000";
+const API_BASE = import.meta.env.DEV ? "http://localhost:8000" : "";
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -28,9 +28,10 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  getInventory: (activeOnly = true, search = "") => {
+  getInventory: (activeOnly = true, search = "", condition = "") => {
     const params = new URLSearchParams({ active_only: String(activeOnly) });
     if (search.trim()) params.set("search", search.trim());
+    if (condition) params.set("condition", condition);
     return request(`/api/inventory?${params}`);
   },
 
@@ -47,10 +48,14 @@ export const api = {
   markNotificationRead: (id) =>
     request(`/api/inventory/notifications/${id}/read`, { method: "PATCH" }),
 
-  getWishlist: (search = "", status = "") => {
+  clearAllNotifications: () =>
+    request("/api/inventory/notifications/read-all", { method: "POST" }),
+
+  getWishlist: (search = "", status = "", condition = "") => {
     const params = new URLSearchParams();
     if (search.trim()) params.set("search", search.trim());
     if (status) params.set("status", status);
+    if (condition) params.set("condition", condition);
     const qs = params.toString();
     return request(`/api/wishlist${qs ? `?${qs}` : ""}`);
   },
@@ -81,11 +86,22 @@ export const api = {
     return request(`/api/matches${qs ? `?${qs}` : ""}`);
   },
 
-  exportMatchesCsvUrl: () => `${API_BASE}/api/matches/export`,
+  exportMatchesCsvUrl: () => `${API_BASE || ""}/api/matches/export`,
 
   setMatchNotified: (id, notified) =>
     request(`/api/matches/${id}/notified`, {
       method: "PATCH",
       body: JSON.stringify({ notified }),
+    }),
+
+  dismissMatch: (id) =>
+    request(`/api/matches/${id}/dismiss`, { method: "POST" }),
+
+  expireMatch: (id) => request(`/api/matches/${id}`, { method: "DELETE" }),
+
+  expireAllHandledMatches: (ids = null) =>
+    request("/api/matches/expire-handled", {
+      method: "POST",
+      body: JSON.stringify(ids ? { ids } : {}),
     }),
 };

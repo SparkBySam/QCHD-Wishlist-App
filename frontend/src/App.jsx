@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NavTabs } from "./ds";
 import Dashboard from "./views/Dashboard";
 import Wishlist from "./views/Wishlist";
 import Matches from "./views/Matches";
@@ -14,22 +15,17 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="header">
-        <div>
-          <h1>Bike Wishlist Tracker</h1>
-          <p>Match dealership inventory against customer wishlists</p>
+      <header className="app-header">
+        <div className="brand">
+          <div className="brand-mark" aria-hidden="true">
+            QC
+          </div>
+          <div>
+            <h1>Bike Wishlist Tracker</h1>
+            <p>Match dealership inventory against customer wishlists</p>
+          </div>
         </div>
-        <nav className="nav">
-          {VIEWS.map((item) => (
-            <button
-              key={item.id}
-              className={view === item.id ? "active" : ""}
-              onClick={() => setView(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        <NavTabs items={VIEWS} activeId={view} onChange={setView} />
       </header>
 
       {view === "dashboard" && <Dashboard />}

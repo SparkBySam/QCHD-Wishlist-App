@@ -1,4 +1,6 @@
-export default function SearchBar({ value, onChange, placeholder = "Search…" }) {
+import React from "react";
+
+export function SearchBar({ value, onChange, placeholder = "Search…" }) {
   return (
     <input
       className="search-input"
