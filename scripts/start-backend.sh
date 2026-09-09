@@ -12,5 +12,8 @@ fi
 
 # Do NOT `source .env` here — passwords with spaces break bash.
 # Python loads backend/.env via python-dotenv in app/main.py.
+#
+# Bind localhost only. The API has no authentication; never use 0.0.0.0
+# without adding auth first (see SECURITY.md).
 
 exec "$APP_DIR/.venv/bin/uvicorn" app.main:app --host 127.0.0.1 --port 8000

@@ -1,5 +1,9 @@
 # How to Run & Use — Bike Wishlist Tracker
 
+This tool is for **local use on a trusted Mac**. It has no login and stores
+customer contact info in a local SQLite database. Keep it on `localhost`
+(see [SECURITY.md](SECURITY.md)). Never commit `backend/.env` or `backend/wishlist.db`.
+
 ## Option A: Run in background (recommended — no daily Terminal)
 
 One-time setup:

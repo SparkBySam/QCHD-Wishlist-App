@@ -4,10 +4,16 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+
+# Secrets and local data — never commit
 .env
-backend/wishlist.db
-backend/logs/
+.env.*
+!.env.example
+!backend/.env.example
 backend/.env
+backend/*.db
+*.db
+backend/logs/
 
 # Node
 frontend/node_modules/
@@ -18,3 +24,4 @@ frontend/dist/
 .idea/
 .vscode/
 *.swp
+*.swo

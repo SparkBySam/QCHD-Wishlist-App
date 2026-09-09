@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,6 +18,14 @@ from app.scheduler import start_scheduler, stop_scheduler
 logging.basicConfig(level=logging.INFO)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+# Docs advertise every mutating endpoint. Off by default for public clones;
+# enable locally with ENABLE_API_DOCS=true in backend/.env
+_ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 
 
 @asynccontextmanager
@@ -40,6 +49,9 @@ app = FastAPI(
     description="Track dealership inventory and match it against customer wishlists.",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if _ENABLE_API_DOCS else None,
+    openapi_url="/openapi.json" if _ENABLE_API_DOCS else None,
 )
 
 app.add_middleware(
